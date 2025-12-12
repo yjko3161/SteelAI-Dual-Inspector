@@ -1,0 +1,13 @@
+{
+    "front": {
+        "type": "USB",
+        "address": 1,
+        "pixels_per_mm": 5.0
+    },
+    "back": {
+        "type": "USB",
+        "address": 1,
+        "pixels_per_mm": 5.2
+    },
+    "save_path": "C:\\workspace\\SteelAI-Dual-Inspector\\data\\captures"
+}
