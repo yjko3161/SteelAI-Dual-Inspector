@@ -27,7 +27,8 @@ def load_config() -> dict:
     default_config = {
         "front": {"type": "USB", "address": 0, "pixels_per_mm": 10.0},
         "back": {"type": "USB", "address": 1, "pixels_per_mm": 10.0},
-        "save_path": str(CAPTURE_DIR)
+        "save_path": str(CAPTURE_DIR),
+        "model_path": "yolov8n.pt"
     }
 
     if CONFIG_FILE.exists():

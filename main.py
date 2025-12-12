@@ -2,9 +2,8 @@ import sys
 import os
 import cv2
 import numpy as np
-from PyQt5.QtWidgets import QApplication
-
 import config
+from PyQt5.QtWidgets import QApplication
 from main_window import MainWindow
 
 def setup_environment():
@@ -31,6 +30,19 @@ def setup_environment():
 
 if __name__ == "__main__":
     setup_environment()
+    
+    # Fix for Qt platform plugin "windows" not found error
+    import PyQt5
+    pkg_path = os.path.dirname(PyQt5.__file__)
+    # Try typical paths for plugins
+    plugin_path = os.path.join(pkg_path, "Qt5", "plugins")
+    if not os.path.exists(plugin_path):
+        # Fallback for some installations
+        plugin_path = os.path.join(pkg_path, "Qt", "plugins")
+    
+    os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = plugin_path
+    print(f"Setting QT_QPA_PLATFORM_PLUGIN_PATH to: {plugin_path}")
+
     app = QApplication(sys.argv)
     main_win = MainWindow()
     main_win.show()

@@ -16,8 +16,17 @@ class CameraManager:
             address = cfg.get('address', 0)
             
             if src_type == 'USB':
-                # USB 카메라는 DirectShow(Windows) 사용 권장
-                return cv2.VideoCapture(int(address), cv2.CAP_DSHOW)
+                idx = int(address)
+                # Fallback Strategy: DSHOW -> MSMF -> ANY
+                backends = [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]
+                for backend in backends:
+                    cap = cv2.VideoCapture(idx, backend)
+                    if cap.isOpened():
+                        print(f"Camera {idx} opened with backend {backend}")
+                        return cap
+                    cap.release()
+                print(f"Failed to open Camera {idx} with any backend.")
+                return cv2.VideoCapture(idx) # Return closed capture as last resort
             else:
                 # RTSP 등 네트워크 스트림
                 return cv2.VideoCapture(str(address))
@@ -49,3 +58,19 @@ class CameraManager:
         ret2, frame2 = self.cam_back.read()
 
         return frame1 if ret1 else None, frame2 if ret2 else None
+
+    @staticmethod
+    def get_available_cameras(max_to_check: int = 10) -> list[int]:
+        """
+        0부터 max_to_check까지 순회하며 열리는 카메라 인덱스 리스트를 반환합니다.
+        DSHOW 등 특정 백엔드 강제보다 기본값(ANY)으로 검색하여 호환성을 높입니다.
+        """
+        available_indices = []
+        for i in range(max_to_check):
+            # 검색 시에는 CAP_DSHOW 강제보다는 ANY(자동) 혹은 MSMF/DSHOW 순차 시도가 안전할 수 있음.
+            # 하지만 간단히 CAP_ANY(0)로 시도하여 열리는지 확인.
+            cap = cv2.VideoCapture(i) 
+            if cap.isOpened():
+                available_indices.append(i)
+                cap.release()
+        return available_indices

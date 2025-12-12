@@ -9,7 +9,7 @@ from pathlib import Path
 from PyQt5.QtWidgets import (QMainWindow, QApplication, QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QComboBox, QTableWidget, QTableWidgetItem,
                              QMessageBox, QGridLayout, QGroupBox, QHeaderView, QAction, QFileDialog,
-                             QRadioButton, QButtonGroup, QSplitter)
+                             QRadioButton, QButtonGroup, QSplitter, QTabWidget)
 from PyQt5.QtGui import QPixmap, QImage, QFont, QColor
 from PyQt5.QtCore import Qt, QTimer
 
@@ -43,13 +43,25 @@ class MainWindow(QMainWindow):
         self.preview_timer.timeout.connect(self._update_previews)
 
         self._init_ui()
+        
+        # FR-AutoConnect: 3초 후 카메라 자동 연결 시도
+        QTimer.singleShot(3000, self._connect_cameras)
 
     def _init_ui(self):
         self.setWindowTitle("SteelAI-Dual Inspector")
-        self.setGeometry(100, 100, 1600, 900)
+        # self.showFullScreen() <- Removed from here
 
         # --- 메뉴바 설정 ---
         menubar = self.menuBar()
+        
+        # 시스템 메뉴 (종료 등)
+        sys_menu = menubar.addMenu('시스템')
+        exit_action = QAction('종료', self)
+        exit_action.setShortcut('Ctrl+Q')
+        exit_action.triggered.connect(self._exit_program)
+        sys_menu.addAction(exit_action)
+
+        # 설정 메뉴
         settings_menu = menubar.addMenu('설정')
         cam_setting_action = QAction('카메라 설정', self)
         cam_setting_action.triggered.connect(self._open_settings)
@@ -101,23 +113,7 @@ class MainWindow(QMainWindow):
         log_layout.addWidget(self.log_table)
         left_layout.addWidget(log_group)
 
-        # 1-4. 컨트롤 버튼
-        control_group = QGroupBox("시스템 제어")
-        control_layout = QVBoxLayout(control_group)
-        self.connect_btn = QPushButton("카메라 연결")
-        self.connect_btn.clicked.connect(self._connect_cameras)
-        self.capture_btn = QPushButton("촬영 (Capture)")
-        self.capture_btn.clicked.connect(self._capture_images)
-        self.inspect_btn = QPushButton("검사 실행 (Inspect)")
-        self.inspect_btn.clicked.connect(self._run_inspection)
-        self.resume_btn = QPushButton("프리뷰 재개")
-        self.resume_btn.clicked.connect(self._resume_preview)
-        
-        control_layout.addWidget(self.connect_btn)
-        control_layout.addWidget(self.capture_btn)
-        control_layout.addWidget(self.inspect_btn)
-        control_layout.addWidget(self.resume_btn)
-        left_layout.addWidget(control_group)
+        left_layout.addWidget(log_group)
 
         content_layout.addWidget(left_panel)
 
@@ -140,13 +136,72 @@ class MainWindow(QMainWindow):
         
         content_layout.addWidget(center_panel, stretch=1)
 
-        # [Zone 3] 우측: 분석 및 종합 판정
+        # [Zone 3] 우측: 탭 인터페이스 (검사 / 대시보드)
         right_panel = QWidget()
         right_layout = QVBoxLayout(right_panel)
         right_panel.setFixedWidth(400)
 
-        # 3-1. 트렌드 차트 (Crack 길이)
-        chart_group = QGroupBox("분석 대시보드")
+        tabs = QTabWidget()
+        right_layout.addWidget(tabs)
+
+        # Tab 1: 검사 (Inspection)
+        tab_inspection = QWidget()
+        inspect_layout = QVBoxLayout(tab_inspection)
+        
+        # 1-1. 최종 판정 결과 (Result) - Font Size increased (32 -> 64)
+        result_group = QGroupBox("최종 판정 (Result)")
+        result_layout = QVBoxLayout(result_group)
+        self.lbl_final_result = QLabel("READY")
+        self.lbl_final_result.setAlignment(Qt.AlignCenter)
+        self.lbl_final_result.setFont(QFont("Arial", 64, QFont.Bold))
+        self.lbl_final_result.setStyleSheet("color: gray; border: 2px solid gray;")
+        self.lbl_final_result.setMinimumHeight(150) # Ensure enough space
+        result_layout.addWidget(self.lbl_final_result)
+        inspect_layout.addWidget(result_group)
+
+        # 1-2. 검사 제어 버튼 (Inspect Only) - Size increased (60 -> 120)
+        btn_group = QGroupBox("검사 제어")
+        btn_layout = QVBoxLayout(btn_group)
+        
+        self.inspect_btn = QPushButton("검사 실행 (Inspect)")
+        self.inspect_btn.clicked.connect(self._run_inspection)
+        self.inspect_btn.setMinimumHeight(120)
+        self.inspect_btn.setStyleSheet("font-weight: bold; font-size: 20px; background-color: #2196F3; color: white;")
+        
+        btn_layout.addWidget(self.inspect_btn)
+        inspect_layout.addWidget(btn_group)
+        
+        # 1-3. 시스템 제어 (System Control) - New location for Connect, Capture, Resume
+        sys_group = QGroupBox("시스템 제어")
+        sys_layout = QVBoxLayout(sys_group)
+        
+        self.connect_btn = QPushButton("카메라 연결")
+        self.connect_btn.clicked.connect(self._connect_cameras)
+        self.connect_btn.setMinimumHeight(40)
+
+        self.capture_btn = QPushButton("촬영 (Capture)")
+        self.capture_btn.clicked.connect(self._capture_images)
+        self.capture_btn.setMinimumHeight(40)
+        
+        self.resume_btn = QPushButton("프리뷰 재개")
+        self.resume_btn.clicked.connect(self._resume_preview)
+        self.resume_btn.setMinimumHeight(40)
+        
+        sys_layout.addWidget(self.connect_btn)
+        sys_layout.addWidget(self.capture_btn)
+        sys_layout.addWidget(self.resume_btn)
+        
+        inspect_layout.addWidget(sys_group)
+        
+        inspect_layout.addStretch() # 상단 정렬
+        
+        tabs.addTab(tab_inspection, "검사")
+
+        # Tab 2: 분석 대시보드 (Dashboard)
+        tab_dashboard = QWidget()
+        dash_layout = QVBoxLayout(tab_dashboard)
+
+        chart_group = QGroupBox("분석 차트")
         chart_layout = QVBoxLayout(chart_group)
         
         self.figure = Figure(figsize=(4, 6), dpi=100)
@@ -156,25 +211,33 @@ class MainWindow(QMainWindow):
         self.figure.tight_layout()
         
         chart_layout.addWidget(self.canvas)
-        right_layout.addWidget(chart_group)
-
-        # 3-2. 최종 판정 결과
-        result_group = QGroupBox("최종 판정 (Result)")
-        result_layout = QVBoxLayout(result_group)
-        self.lbl_final_result = QLabel("READY")
-        self.lbl_final_result.setAlignment(Qt.AlignCenter)
-        self.lbl_final_result.setFont(QFont("Arial", 32, QFont.Bold))
-        self.lbl_final_result.setStyleSheet("color: gray; border: 2px solid gray;")
-        result_layout.addWidget(self.lbl_final_result)
-        right_layout.addWidget(result_group)
+        dash_layout.addWidget(chart_group)
+        
+        tabs.addTab(tab_dashboard, "대시보드")
 
         content_layout.addWidget(right_panel)
 
         # 초기 차트 그리기
         self._update_charts()
+        
+        self.showFullScreen() # Kiosk Mode (Full Screen) - Moved here to ensure widgets exist
+
+    def _exit_program(self):
+        """프로그램 종료 시 확인 대화상자를 띄웁니다."""
+        reply = QMessageBox.question(self, '종료 확인', 
+                                     "프로그램을 종료하시겠습니까?", 
+                                     QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        
+        if reply == QMessageBox.Yes:
+            self.close()
 
     def _open_settings(self):
         """설정 다이얼로그를 엽니다."""
+        # 설정을 열기 전에 카메라 자원을 해제해야 검색이 가능함
+        if self.preview_timer.isActive():
+            self.preview_timer.stop()
+        self.camera_manager.close()
+
         dlg = SettingsDialog(self.app_config, self)
         if dlg.exec_():
             self.app_config = dlg.get_settings()

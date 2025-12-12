@@ -1,7 +1,7 @@
 {
     "front": {
         "type": "USB",
-        "address": 1,
+        "address": 0,
         "pixels_per_mm": 5.0
     },
     "back": {
@@ -9,5 +9,6 @@
         "address": 1,
         "pixels_per_mm": 5.2
     },
-    "save_path": "C:\\workspace\\SteelAI-Dual-Inspector\\data\\captures"
+    "save_path": "C:\\workspace\\SteelAI-Dual-Inspector\\data\\captures",
+    "model_path": "C:/SteelAI-Dual-Inspector/runs/detect/train4/weights/best.pt"
 }

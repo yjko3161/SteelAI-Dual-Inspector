@@ -1,9 +1,10 @@
-import numpy as np
 import torch
+import numpy as np
 from ultralytics import YOLO
 from defect import Defect
 import measurement
 import config
+from pathlib import Path
 
 class DefectDetector:
     """
@@ -16,15 +17,30 @@ class DefectDetector:
         self.device = 'cpu'
         self.confidence_threshold = self.config.get('confidence_threshold', 0.5)
         
-        # 모델 파일 경로 설정 (models/best.pt 우선, 없으면 yolov8n.pt)
-        model_path = config.MODELS_DIR / "best.pt"
+        self.confidence_threshold = self.config.get('confidence_threshold', 0.5)
+        
+        # 모델 파일 경로 설정 (사용자 설정 값 우선)
+        # config에 'model_path'가 없으면 기본 'yolov8n.pt'
+        model_name_or_path = self.config.get('model_path', 'yolov8n.pt')
+        
+        model_path = Path(model_name_or_path) 
+        
         try:
-            if model_path.exists():
+            # 경로가 실제 파일이면 그대로 로드
+            if model_path.exists() and model_path.is_file():
+                print(f"Loading user-configured model: {model_path}")
                 self.model = YOLO(str(model_path))
-                print(f"Loaded custom model: {model_path}")
+            # 경로가 파일 이름만 있거나(예: "yolov8n.pt") 존재하지 않는 경우 처리
             else:
-                print("Custom model not found. Loading YOLOv8n (nano) model...")
-                self.model = YOLO("yolov8n.pt")
+                # 1. models 폴더 안에서 찾아보기
+                possible_path = config.MODELS_DIR / model_name_or_path
+                if possible_path.exists():
+                    print(f"Loading from models dir: {possible_path}")
+                    self.model = YOLO(str(possible_path))
+                # 2. 아니면 이름 그대로 (e.g. "yolov8n.pt" -> ultralytics 자동 다운로드/로드)
+                else:
+                    print(f"Model file not found locally. Attempting to load by name: {model_name_or_path}")
+                    self.model = YOLO(model_name_or_path)
             
             # GPU 사용 가능 여부 확인
             if torch.cuda.is_available():
